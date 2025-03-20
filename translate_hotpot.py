@@ -16,13 +16,38 @@ def translate_row(row, translator):
     
     translation = translator.translate_json(to_translate)
 
+    if "question" not in translation:
+        print("Translation missing question field.")
+        return {}
+    if "answer" not in translation:
+        print("Translation answer answer field.")
+        return {}
+    if "supporting_facts" not in translation:
+        print("Translation missing supporting_facts field.")
+        return {}
+    if "title" not in translation['supporting_facts']:
+        print("Translation missing supporting_facts title field.")
+        return {}
+    if "context" not in translation:
+        print("Translation missing context field.")
+        return {}
+    if "title" not in translation['context']:
+        print("Translation missing context title field.")
+        return {}
+    if "sentences" not in translation['context']:
+        print("Translation missing context sentences field.")
+        return {}
+
     translated_row = {
         'id': row['id'],
         'question': translation['question'],
         'answer': translation['answer'],
         'type': row['type'],
         'level': row['level'],
-        'supporting_facts': translation['supporting_facts'],
+        'supporting_facts': {
+            'title': translation['supporting_facts']['title'],
+            'sent_id': row['supporting_facts']['sent_id']
+        },
         'context': translation['context']
     }
 
@@ -33,8 +58,8 @@ def main():
     
     temp_path = "./temp/temp_pt_hotpot_qa.json"
     output_path = "./datasets/pt_hotpot_qa_distractor_validation_v1.json"
-    max_rows = 10
-    num_threads = 10  # Number of concurrent threads
+    max_rows = 100
+    num_threads = 1  # Number of concurrent threads
     
     hotpot_qa = load_dataset("hotpot_qa", "distractor")
     dataset = hotpot_qa['validation']
@@ -62,7 +87,7 @@ def main():
                     translated_row = future.result()
                     if translated_row:
                         json.dump(translated_row, temp_file, ensure_ascii=False, indent=4)
-                        temp_file.writelines(",\n")
+                        temp_file.write(",\n")
                         temp_file.flush()
                         id_set.add(translated_row["id"])
                 started_threads = 0
@@ -80,7 +105,7 @@ def main():
             print(f"Submitting row {i}: {row['id']} for translation")
             future = executor.submit(translate_row, row, translator)
             futures[future] = row["id"]
-            num_threads += 1
+            started_threads += 1
     
     end_time = time.time()
     elapsed_time = end_time - start_time

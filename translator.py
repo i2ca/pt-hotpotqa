@@ -31,6 +31,5 @@ class Translator:
         try:
             output_json_dict = json.loads(translated_string)
         except json.JSONDecodeError as e:
-            print(f"Error decoding completion JSON: {json_dict["id"]}.")
-            return {}
+            print(f"Error decoding completion JSON: json_dict: {json_dict}.")
         return output_json_dict
