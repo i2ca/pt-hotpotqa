@@ -1,9 +1,13 @@
+import os
+import time
 import json
 from datasets import load_dataset
 from translator import Translator
 #import uuid
 
 def main():
+
+    start_time = time.time()  # Record the start time
 
     #uuid_string = str(uuid.uuid4())
     #print(uuid_string)
@@ -17,12 +21,31 @@ def main():
     num_completions = 0
     translator = Translator()
 
+
+    id_set = set()
+
+    if os.path.exists(temp_path):
+        print("A temporary file exists, the process will continue where it stopped.")
+        with open(temp_path, 'r', encoding='utf-8') as file:
+            temp_file_str = file.read()
+            temp_file_str = "[" + temp_file_str.rstrip(",\n") + "]"
+            temp_list = json.loads(temp_file_str)
+            for temp_element in temp_list:
+                id_set.add(temp_element["id"])
+        print(f"Entries recovered from the temporary file: {len(id_set)}")
+
     with open(temp_path, "a", encoding="utf-8") as temp_file:
         for i, row in enumerate(dataset):
             if(i >= max_rows):
+                print()
+                print(f"Max number of rows achieved (max={max_rows}).")
                 break
 
-            print(f"Translating row {i}")
+            if row["id"] in id_set:
+                print(f"\rAlready translated {i}: {row["id"]}", end="\r")
+                continue
+
+            print(f"Translating row {i}: {row["id"]}", end="\r")
 
             to_translate = {
                 'question': row['question'],
@@ -47,6 +70,13 @@ def main():
             temp_file.writelines(",\n")
             num_completions += 1
             temp_file.flush()
+
+        print()
+
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+
+        print(f"Time spent in execution: {elapsed_time:.3f} seconds.")
 
 
 if __name__ == "__main__":
