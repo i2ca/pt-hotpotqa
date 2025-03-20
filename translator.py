@@ -27,5 +27,10 @@ class Translator:
     def translate_json(self, json_dict):
         input_string = json.dumps(json_dict, ensure_ascii=False)
         translated_string = self.translate_text(input_string)
-        output_json_dict = json.loads(translated_string)
+        output_json_dict = {} 
+        try:
+            output_json_dict = json.loads(translated_string)
+        except json.JSONDecodeError as e:
+            print(f"Error decoding completion JSON: {json_dict["id"]}.")
+            return {}
         return output_json_dict

@@ -3,24 +3,42 @@ import time
 import json
 from datasets import load_dataset
 from translator import Translator
-#import uuid
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+
+def translate_row(row, translator):
+    to_translate = {
+        'question': row['question'],
+        'answer': row['answer'],
+        'supporting_facts': row['supporting_facts'],
+        'context': row['context']
+    }
+    
+    translation = translator.translate_json(to_translate)
+
+    translated_row = {
+        'id': row['id'],
+        'question': translation['question'],
+        'answer': translation['answer'],
+        'type': row['type'],
+        'level': row['level'],
+        'supporting_facts': translation['supporting_facts'],
+        'context': translation['context']
+    }
+
+    return translated_row
 
 def main():
-
     start_time = time.time()  # Record the start time
-
-    #uuid_string = str(uuid.uuid4())
-    #print(uuid_string)
-
+    
     temp_path = "./temp/temp_pt_hotpot_qa.json"
     output_path = "./datasets/pt_hotpot_qa_distractor_validation_v1.json"
-    max_rows = 3
-
+    max_rows = 10
+    num_threads = 10  # Number of concurrent threads
+    
     hotpot_qa = load_dataset("hotpot_qa", "distractor")
     dataset = hotpot_qa['validation']
-    num_completions = 0
     translator = Translator()
-
 
     id_set = set()
 
@@ -34,49 +52,40 @@ def main():
                 id_set.add(temp_element["id"])
         print(f"Entries recovered from the temporary file: {len(id_set)}")
 
-    with open(temp_path, "a", encoding="utf-8") as temp_file:
+    with ThreadPoolExecutor(max_workers=num_threads) as executor, open(temp_path, "a", encoding="utf-8") as temp_file:
+        futures = {}
+        started_threads = 0
         for i, row in enumerate(dataset):
-            if(i >= max_rows):
-                print()
+            if started_threads >= num_threads or i >= max_rows:
+                print("Waiting API to return the results.")
+                for future in as_completed(futures):
+                    translated_row = future.result()
+                    if translated_row:
+                        json.dump(translated_row, temp_file, ensure_ascii=False, indent=4)
+                        temp_file.writelines(",\n")
+                        temp_file.flush()
+                        id_set.add(translated_row["id"])
+                started_threads = 0
+                futures = {}
+                print("Partial results saved in temporary file.")
+
+            if i >= max_rows:
                 print(f"Max number of rows achieved (max={max_rows}).")
                 break
-
+            
             if row["id"] in id_set:
-                print(f"\rAlready translated {i}: {row["id"]}", end="\r")
+                print(f"Already translated {i}: {row['id']}")
                 continue
-
-            print(f"Translating row {i}: {row["id"]}", end="\r")
-
-            to_translate = {
-                'question': row['question'],
-                'answer': row['answer'],
-                'supporting_facts': row['supporting_facts'],
-                'context': row['context']
-            }
-
-            translated_row = translator.translate_json(to_translate)
-
-            output_row = {
-                'id': row['id'],
-                'question': translated_row['question'],
-                'answer': translated_row['answer'],
-                'type': row['type'],
-                'level': row['level'],
-                'supporting_facts': translated_row['supporting_facts'],
-                'context': translated_row['context']
-            }
-
-            json.dump(output_row, temp_file, ensure_ascii=False, indent=4)
-            temp_file.writelines(",\n")
-            num_completions += 1
-            temp_file.flush()
-
-        print()
-
-        end_time = time.time()
-        elapsed_time = end_time - start_time
-
-        print(f"Time spent in execution: {elapsed_time:.3f} seconds.")
+            
+            print(f"Submitting row {i}: {row['id']} for translation")
+            future = executor.submit(translate_row, row, translator)
+            futures[future] = row["id"]
+            num_threads += 1
+    
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    
+    print(f"Time spent in execution: {elapsed_time:.3f} seconds.")
 
 
 if __name__ == "__main__":
