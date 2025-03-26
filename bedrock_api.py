@@ -12,12 +12,12 @@ class BedrockApi:
         try:
             body = {
                 "prompt": prompt,
-                "temperature": 0.1,
-                "top_p": 0.9,
+                "temperature": 0,
+                "top_p": 1.0,
                 "max_gen_len": 32,
             }
             response = self.bedrock_runtime_client.invoke_model(
-                modelId="us.meta.llama3-2-90b-instruct-v1:0", body=json.dumps(body)
+                modelId="us.meta.llama3-2-1b-instruct-v1:0", body=json.dumps(body)
             )
             response_body = json.loads(response["body"].read())
             response_text = response_body['generation']
