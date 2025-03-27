@@ -56,13 +56,19 @@ def translate_row(row, translator):
 def main():
     start_time = time.time()  # Record the start time
     
-    temp_path = "./temp/temp_pt_hotpot_qa.json"
+    temp_path = "./temp/x100_temp_pt_hotpot_qa.json"
     output_path = "./datasets/pt_hotpot_qa_distractor_validation_v1.json"
-    max_rows = 100
-    num_threads = 1  # Number of concurrent threads
+    max_rows = 200
+    num_threads = 100  # Number of concurrent threads
     
     hotpot_qa = load_dataset("hotpot_qa", "distractor")
     dataset = hotpot_qa['validation']
+
+    seed = 9364527
+    shuffled = dataset.shuffle(seed=seed)
+    subset = shuffled.select(range(100))
+
+
     translator = Translator()
 
     id_set = set()
@@ -77,10 +83,12 @@ def main():
                 id_set.add(temp_element["id"])
         print(f"Entries recovered from the temporary file: {len(id_set)}")
 
+    n_completed = 0
+
     with ThreadPoolExecutor(max_workers=num_threads) as executor, open(temp_path, "a", encoding="utf-8") as temp_file:
         futures = {}
         started_threads = 0
-        for i, row in enumerate(dataset):
+        for i, row in enumerate(subset):
             if started_threads >= num_threads or i >= max_rows:
                 print("Waiting API to return the results.")
                 for future in as_completed(futures):
@@ -106,6 +114,17 @@ def main():
             future = executor.submit(translate_row, row, translator)
             futures[future] = row["id"]
             started_threads += 1
+
+        for future in as_completed(futures):
+            translated_row = future.result()
+            if translated_row:
+                json.dump(translated_row, temp_file, ensure_ascii=False, indent=4)
+                temp_file.write(",\n")
+                temp_file.flush()
+                id_set.add(translated_row["id"])
+        started_threads = 0
+        futures = {}
+        print("Partial results saved in temporary file.")
     
     end_time = time.time()
     elapsed_time = end_time - start_time
