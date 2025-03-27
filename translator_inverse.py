@@ -14,7 +14,7 @@ class Translator:
     #Translates a given text from English to Portuguese using GPT-4o-mini.
     def translate_text(self, text):
         prompt = f"""\
-Translate only the text values (e.g., inside quotes) from the following JSON object from English to Portuguese.
+Translate only the text values (e.g., inside quotes) from the following JSON object from Portuguese to English.
 Do not change the structure, keys, punctuation, or formatting of the JSON.
 Do not replace double quotes " with single quotes '.
 Return the result as valid JSON
@@ -36,9 +36,13 @@ Return the result as valid JSON
         translated_string = self.translate_text(input_string)
         translated_string = translated_string.removeprefix("```json").removesuffix("```")
 
+        print("translated_string -----------------------------------------------------")
+        print(translated_string)
+
         output_json_dict = {} 
         try:
             output_json_dict = json.loads(translated_string)
         except json.JSONDecodeError as e:
-            print(f"Error decoding completion JSON: json_dict: {json_dict}.")
+            None
+            #print(f"Error decoding completion JSON: json_dict: {input_string}.")
         return output_json_dict
