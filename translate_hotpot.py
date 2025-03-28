@@ -4,6 +4,7 @@ import json
 from datasets import load_dataset
 from translator import Translator
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from validator import HotpotEntryValidator
 
 
 def translate_row(row, translator):
@@ -16,27 +17,16 @@ def translate_row(row, translator):
     
     translation = translator.translate_json(to_translate)
 
-    if "question" not in translation:
-        print("Translation missing question field.")
-        return {}
-    if "answer" not in translation:
-        print("Translation answer answer field.")
-        return {}
-    if "supporting_facts" not in translation:
-        print("Translation missing supporting_facts field.")
-        return {}
-    if "title" not in translation['supporting_facts']:
-        print("Translation missing supporting_facts title field.")
-        return {}
-    if "context" not in translation:
-        print("Translation missing context field.")
-        return {}
-    if "title" not in translation['context']:
-        print("Translation missing context title field.")
-        return {}
-    if "sentences" not in translation['context']:
-        print("Translation missing context sentences field.")
-        return {}
+    if "has_error" in translation and translation["has_error"]:
+        return translation
+
+    error_messages = HotpotEntryValidator.validate(translation)
+    if error_messages:
+        return {
+            "has_error": True,
+            "completion": translation,
+            "error_messages": error_messages,
+        }
 
     translated_row = {
         'id': row['id'],
@@ -56,18 +46,16 @@ def translate_row(row, translator):
 def main():
     start_time = time.time()  # Record the start time
     
-    temp_path = "./temp/x100_temp_pt_hotpot_qa.json"
+    temp_path = "./temp/full_validation_pt_hotpot_qa.json"
+    error_path = "./errors/full_validation_pt_hotpot_qa_errors.json"
     output_path = "./datasets/pt_hotpot_qa_distractor_validation_v1.json"
-    max_rows = 200
+    max_rows = 8000
     num_threads = 100  # Number of concurrent threads
     
     hotpot_qa = load_dataset("hotpot_qa", "distractor")
     dataset = hotpot_qa['validation']
 
-    seed = 9364527
-    shuffled = dataset.shuffle(seed=seed)
-    subset = shuffled.select(range(100))
-
+    subset = dataset
 
     translator = Translator()
 
@@ -81,31 +69,43 @@ def main():
             temp_list = json.loads(temp_file_str)
             for temp_element in temp_list:
                 id_set.add(temp_element["id"])
-        print(f"Entries recovered from the temporary file: {len(id_set)}")
+        print(f"Entries recovered from the temporary file: Total={len(temp_list)}, Unique={len(id_set)}")
 
     n_completed = 0
 
-    with ThreadPoolExecutor(max_workers=num_threads) as executor, open(temp_path, "a", encoding="utf-8") as temp_file:
+    with \
+    ThreadPoolExecutor(max_workers=num_threads) as executor, \
+    open(temp_path, "a", encoding="utf-8") as temp_file, \
+    open(error_path, "a", encoding="utf-8") as error_file:
         futures = {}
         started_threads = 0
         for i, row in enumerate(subset):
-            if started_threads >= num_threads or i >= max_rows:
+            if started_threads >= num_threads:
                 print("Waiting API to return the results.")
+                n_success = 0
+                n_error = 0
                 for future in as_completed(futures):
                     translated_row = future.result()
-                    if translated_row:
+                    if "has_error" in translated_row and translated_row["has_error"]:
+                        json.dump(translated_row, error_file, ensure_ascii=False, indent=4)
+                        error_file.write(",\n")
+                        error_file.flush()
+                        n_error += 1
+                    else:
                         json.dump(translated_row, temp_file, ensure_ascii=False, indent=4)
                         temp_file.write(",\n")
                         temp_file.flush()
                         id_set.add(translated_row["id"])
+                        n_success += 1
+                    n_completed += 1
                 started_threads = 0
                 futures = {}
-                print("Partial results saved in temporary file.")
+                print(f"Partial results saved in temporary file. n_success={n_success} / n_error={n_error}")
 
             if i >= max_rows:
                 print(f"Max number of rows achieved (max={max_rows}).")
                 break
-            
+
             if row["id"] in id_set:
                 print(f"Already translated {i}: {row['id']}")
                 continue
@@ -115,16 +115,26 @@ def main():
             futures[future] = row["id"]
             started_threads += 1
 
+        print("Waiting API to return the last batch of results.")
+        n_success = 0
+        n_error = 0
         for future in as_completed(futures):
             translated_row = future.result()
-            if translated_row:
+            if "has_error" in translated_row and translated_row["has_error"]:
+                json.dump(translated_row, error_file, ensure_ascii=False, indent=4)
+                error_file.write(",\n")
+                error_file.flush()
+                n_error += 1
+            else:
                 json.dump(translated_row, temp_file, ensure_ascii=False, indent=4)
                 temp_file.write(",\n")
                 temp_file.flush()
                 id_set.add(translated_row["id"])
+                n_success += 1
+            n_completed += 1
         started_threads = 0
         futures = {}
-        print("Partial results saved in temporary file.")
+        print(f"Partial results saved in temporary file. n_success={n_success} / n_error={n_error}")
     
     end_time = time.time()
     elapsed_time = end_time - start_time

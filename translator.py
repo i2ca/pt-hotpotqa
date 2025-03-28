@@ -26,7 +26,8 @@ Return the result as valid JSON
                 {"role": "user", "content": prompt}
             ],
             n=1,
-            temperature=0.0
+            temperature=0.0,
+            top_p=1.0
         )
         translated_text = response.choices[0].message.content.strip()
         return translated_text
@@ -36,9 +37,18 @@ Return the result as valid JSON
         translated_string = self.translate_text(input_string)
         translated_string = translated_string.removeprefix("```json").removesuffix("```")
 
-        output_json_dict = {} 
+        output_json_dict = {}
+        error_obj={}
         try:
             output_json_dict = json.loads(translated_string)
         except json.JSONDecodeError as e:
-            print(f"Error decoding completion JSON: json_dict: {json_dict}.")
+            error_obj = {
+                "has_error": True,
+                "completion": translated_string,
+                "error_messages": [e.msg],
+            }
+
+        if error_obj:
+            return error_obj
+
         return output_json_dict
