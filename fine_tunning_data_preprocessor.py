@@ -2,7 +2,7 @@ import os
 import json
 from datasets import Dataset
     
-dataset_path = "./datasets/pt_hotpot_qa_distractor_validation.json"
+dataset_path = "./datasets/pt_hotpot_qa_distractor_train.json"
 output_path = "./datasets/fine_tunning"
 
 if os.path.exists(dataset_path):

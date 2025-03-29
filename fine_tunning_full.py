@@ -2,7 +2,10 @@ from datasets import load_from_disk
 from trl import SFTTrainer, SFTConfig
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
-dataset = load_from_disk("./datasets/fine_tunning")
+dataset_path = "./datasets/fine_tunning"
+checkpoint_path = "./checkpoint"
+
+dataset = load_from_disk(dataset_path)
 model_name = "meta-llama/Llama-3.2-1B-Instruct"
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 
