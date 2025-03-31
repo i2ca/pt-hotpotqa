@@ -1,42 +1,14 @@
-import os
-import json
-import time
-from datasets import load_dataset
-from bedrock_api import BedrockApi
+from qa_solver import QaSolver
+from llm_api import LlmApi
 from string_normalizer import StringNormalizer
   
-hotpot_qa = load_dataset("hotpot_qa", "distractor")
-dataset = hotpot_qa['validation']
+class QaSolverEnglish(QaSolver):
 
-print(dataset)
+    def __init__(self, llmApi: LlmApi):
+        self.llmApi = llmApi
 
-seed = 853350
-shuffled = dataset.shuffle(seed=seed)
-subset = shuffled.select(range(100))
-
-temp_path = "./temp/temp_solution.json"
-id_set = set()
-if os.path.exists(temp_path):
-    print("A temporary file exists, the process will continue where it stopped.")
-    with open(temp_path, 'r', encoding='utf-8') as file:
-        temp_file_str = file.read()
-        temp_file_str = "[" + temp_file_str.rstrip(",\n") + "]"
-        temp_list = json.loads(temp_file_str)
-        for temp_element in temp_list:
-            id_set.add(temp_element["id"])
-    print(f"Entries recovered from the temporary file: {len(id_set)}")
-
-n_correct = 0
-n_incorrect = 0
-
-with open(temp_path, 'a', encoding='utf-8') as temp_file:
-    for i, item in enumerate(subset):
-        if i >= 100:
-            break
-
-        if item["id"] in id_set:
-            print(f"Already solved {i}: {item['id']}")
-            continue
+    def answer(self, question_object: str):
+        item = question_object
 
         supporting_facts = item["supporting_facts"]
         context = item["context"]
@@ -73,18 +45,12 @@ Given the context below, answer the question concisely, providing only the direc
 <answer>
 """
 
-        llmApi = BedrockApi()
-        completion = llmApi.call_llama_api(prompt)
+        completion = self.llmApi.query(prompt)
 
         normalized_completion = StringNormalizer.normalize(completion)
         normalized_answer = StringNormalizer.normalize(answer)
 
         correct = (normalized_completion == normalized_answer)
-
-        if correct:
-            n_correct += 1
-        else:
-            n_incorrect += 1
 
         data = {
             "id": item["id"],
@@ -98,10 +64,4 @@ Given the context below, answer the question concisely, providing only the direc
             "correct": correct
         }
 
-        json.dump(data, temp_file, ensure_ascii=False, indent=4)
-        temp_file.write(",\n")
-        temp_file.flush()
-        id_set.add(item["id"])
-
-        print(f"Completion={normalized_completion}, Answer={normalized_answer}, Correct={n_correct}, Incorrect={n_incorrect}, {item['type']}-{item['level']}")
-        time.sleep(20)
+        return data
