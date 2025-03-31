@@ -1,15 +1,7 @@
 import os
 import json
 from abc import ABC, abstractmethod
-from datasets import load_dataset
   
-hotpot_qa = load_dataset("hotpot_qa", "distractor")
-dataset = hotpot_qa['validation']
-
-seed = 853350
-shuffled = dataset.shuffle(seed=seed)
-subset = shuffled.select(range(100))
-
 class QaSolver(ABC):
 
     @abstractmethod
