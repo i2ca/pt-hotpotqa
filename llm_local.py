@@ -4,11 +4,9 @@ from llm_api import LlmApi
 
 class LlmLocalApi(LlmApi):
 
-    def __init__(self):
-        model_name = "meta-llama/Llama-3.2-1B-Instruct"
-        #model_name = "./models/finetuned_llama_1b"
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        self.model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch.float32).cuda()
+    def __init__(self, model = "meta-llama/Llama-3.2-1B-Instruct"):
+        self.tokenizer = AutoTokenizer.from_pretrained(model)
+        self.model = AutoModelForCausalLM.from_pretrained(model, torch_dtype=torch.float32).cuda()
         self.model = torch.compile(self.model)
         self.model.eval()
 

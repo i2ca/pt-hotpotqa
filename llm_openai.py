@@ -3,7 +3,8 @@ from llm_api import LlmApi
 
 class LlmOpenaiApi(LlmApi):
 
-    def __init__(self, api_key_file="api_key.txt"):
+    def __init__(self, model="gpt-4o-mini", api_key_file="api_key.txt"):
+        self.model = model
         self.api_key = self.get_api_key(api_key_file)
         self.client = OpenAI(api_key=self.api_key)
 
@@ -15,7 +16,7 @@ class LlmOpenaiApi(LlmApi):
     def query(self, prompt):
 
         response = self.client.chat.completions.create(
-            model="gpt-4o",
+            model=self.model,
             messages=[
                 {"role": "user", "content": prompt}
             ],

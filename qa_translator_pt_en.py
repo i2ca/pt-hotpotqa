@@ -14,8 +14,8 @@ class QaTranslatorEnglishToPortuguese(QaTranslator):
 Translate only the text values (e.g., inside quotes) from the following JSON object from Portuguese to English.
 Do not change the structure, keys, punctuation, or formatting of the JSON.
 Do not replace double quotes " with single quotes '.
-The result must be a valid JSON
-Return only the translated JSON object and nothing else
+The result must be a valid JSON.
+Return only the translated JSON object and nothing else.
 {text}
 """     
         translated_text = self.llmApi.query(prompt)

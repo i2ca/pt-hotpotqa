@@ -10,7 +10,6 @@ class QaSolverEnglish(QaSolver):
     def answer(self, question_object: str):
         item = question_object
 
-        supporting_facts = item["supporting_facts"]
         context = item["context"]
         full_context = ""
         for title, sentences in zip(context['title'], context['sentences']):
