@@ -2,7 +2,7 @@ import json
 from qa_translator import QaTranslator
 from llm_api import LlmApi
 
-class QaTranslatorEnglishToPortuguese(QaTranslator):
+class QaTranslatorPortugueseToEnglish(QaTranslator):
 
     def __init__(self, llmApi: LlmApi):
         self.llmApi = llmApi

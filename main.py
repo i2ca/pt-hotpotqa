@@ -1,3 +1,4 @@
+from option_translate_dataset import TranslateQADataset
 from option_answer_dataset import AnswerQADataset
 from option_answer_statistics import QADatasetStatistics
 
@@ -10,6 +11,10 @@ print("    0. Translate a QA dataset")
 print("    1. Use an LLM to answer a QA dataset")
 print("    2. Show a QA answer dataset stats")
 option = input()
+
+if option == "0":
+    opt1 = TranslateQADataset()
+    opt1.run()
 
 if option == "1":
     opt1 = AnswerQADataset()

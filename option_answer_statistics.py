@@ -14,6 +14,8 @@ class QADatasetStatistics:
         for f in os.listdir(self.folder_path):
             if os.path.isfile(os.path.join(self.folder_path, f)):
                 files.append(f)
+        
+        files = sorted(files)
 
         print("Choose a dataset:")
         for i, file_name in enumerate(files):
@@ -40,6 +42,6 @@ class QADatasetStatistics:
         print(f'Correct: {n_correct}')
         print(f'Incorrect: {n_incorrect}')
         print(f'Total: {n_total}')
-        print(f'Percent Correct: {100 * n_correct / n_incorrect:.2f}%')
+        print(f'Percent Correct: {100 * n_correct / n_total:.2f}%')
 
 
